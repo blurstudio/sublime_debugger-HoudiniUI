@@ -7,4 +7,21 @@ If not, please install it and restart Sublime before continuing.
 Before using this adapter, a bit of setup has to be performed, 
 and your codebase may need to be restructured:
 
+- All your scripting should be done in a custom repository 
+  imported by Houdini. For example, let's consider a module
+  named 'testfunctions.py' under Documents/HoudiniX.XX/python2.7libs
+- In that module, write functions for the functionality you want 
+  in your UI elements. As an example, consider a function 
+  defined as "def my_function():".
+- In Houdini, in the button script, simply write 
 
+        from testfunctions import my_function
+
+        my_function()
+
+Now, all your scripting can be done in testfunctions.py
+through Sublime. All that's left is to start the debugger and
+select the Houdini UI adapter, set the breakpoints you want
+in (your equivalent of) testfunctions.py, and press the button
+calling the function in question in Houdini, and debugging will 
+start in Sublime.
