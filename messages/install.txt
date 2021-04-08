@@ -1,8 +1,10 @@
----------------------------------------------------------------
-                    DebugAdapter-Template
----------------------------------------------------------------
 
-Thanks for installing this debug adapter.
+Thanks for installing the Houdini UI debug adapter.
 
 Please ensure you have the "Debugger" plugin installed. 
 If not, please install it and restart Sublime before continuing.
+
+Before using this adapter, a bit of setup has to be performed, 
+and your codebase may need to be restructured:
+
+
