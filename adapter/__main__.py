@@ -30,6 +30,7 @@ def main():
 
     global interface
 
+    # Create and start the interface with the debugger
     interface = DebuggerInterface(on_receive=on_receive_from_debugger)
     interface.start()
 
@@ -40,18 +41,19 @@ def on_receive_from_debugger(message):
     while debugpy is being set up
     """
 
+    # Load message contents into a dictionary
     contents = json.loads(message)
     last_seq = contents.get('seq')
 
     log('Received from Debugger:', message)
 
+    # Get the type of command the debugger sent
     cmd = contents['command']
     
     if cmd == 'initialize':
         # Run init request once houdini connection is established and send success response to the debugger
         interface.send(json.dumps(json.loads(INITIALIZE_RESPONSE)))  # load and dump to remove indents
         processed_seqs.append(contents['seq'])
-        # pass
     
     elif cmd == 'attach':
         # time to attach to houdini
@@ -66,6 +68,7 @@ def on_receive_from_debugger(message):
             # filepath=config['program'].replace('\\', '\\\\')
         )
 
+        # Update the message with the new arguments to then be sent to debugpy
         contents = contents.copy()
         contents['arguments'] = json.loads(new_args)
         message = json.dumps(contents)  # update contents to reflect new args
@@ -84,7 +87,8 @@ def attach_to_houdini(contents):
     global attach_code
     config = contents['arguments']
 
-    # format attach code appropriately
+    # Format the simulated attach response to send it back to the debugger
+    # while we set up the debugpy in the background
     attach_code = ATTACH_TEMPLATE.format(
         debugpy_path=debugpy_path,
         hostname=config['debugpy']['host'],
@@ -92,10 +96,11 @@ def attach_to_houdini(contents):
         interpreter=config['interpreter'],
     )
 
-    # Copy code to temporary file and start a houdini console with it
     try: 
         send_code_to_houdini(attach_code)
     except Exception as e:
+        # Raising exceptions shows the text in the Debugger's output.
+        # Raise an error to show a potential solution to this problem.
         log("Exception occurred: \n\n" + str(e))
         raise Exception(
             """
@@ -121,18 +126,16 @@ def send_code_to_houdini(code):
     Inspired by send_to_nuke.py at https://github.com/tokejepsen/atom-foundry-nuke
     """
 
-    filepath = join(gettempdir(), 'temp.py')
-    with open(filepath, "w") as file:
-        file.write(code)
-
-    # throws error if it fails
+    # Throws error if it fails
     log("Sending code to Houdini...")
 
     ADDR = ("localhost", 8887)
 
+    # Create a socket and connect to server in Houdini
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect(ADDR)
 
+    # Send the code directly to the server and close the socket
     client.send(code.encode("UTF-8"))
     client.close()
     
@@ -147,17 +150,21 @@ def start_debugging(address):
 
     log("Connecting to " + address[0] + ":" + str(address[1]))
 
+    # Create the socket used to communicate with debugpy
     global debugpy_socket
     debugpy_socket = socket.create_connection(address)
 
     log("Successfully connected to houdini for debugging. Starting...")
 
-    run(debugpy_send_loop)  # Start sending requests to debugpy
+    # Start a thread that sends requests to debugpy
+    run(debugpy_send_loop)
 
     fstream = debugpy_socket.makefile()
 
     while True:
         try:
+            # Wait for the CONTENT_HEADER to show up,
+            # then get the length of the content following it
             content_length = 0
             while True:
                 header = fstream.readline()
@@ -168,6 +175,7 @@ def start_debugging(address):
                 if header.startswith(CONTENT_HEADER):
                     content_length = int(header[len(CONTENT_HEADER):])
 
+            # Read the content of the response, then call the callback
             if content_length > 0:
                 total_content = ""
                 while content_length > 0:
@@ -180,6 +188,8 @@ def start_debugging(address):
                     on_receive_from_debugpy(message)
 
         except Exception as e:
+            # Problem with socket. Close it then return
+
             log("Failure reading houdini's debugpy output: \n" + str(e))
             debugpy_socket.close()
             break
@@ -192,12 +202,16 @@ def debugpy_send_loop():
     """
 
     while True:
+        # Get the first message off the queue
         msg = debugpy_send_queue.get()
         if msg is None:
+            # get() is blocking, so None means it was intentionally
+            # added to the queue to stop this loop, or that a problem occurred
             return
         else:
             try:
-                debugpy_socket.send('Content-Length: {}\r\n\r\n'.format(len(msg)).encode('UTF-8'))
+                # First send the content header with the length of the message, then send the message
+                debugpy_socket.send(bytes(CONTENT_HEADER + '{}\r\n\r\n'.format(len(msg)), 'UTF-8'))
                 debugpy_socket.send(msg.encode('UTF-8'))
                 log('Sent to debugpy:', msg)
             except OSError:
@@ -213,6 +227,7 @@ def on_receive_from_debugpy(message):
     Handles messages going from debugpy to the debugger
     """
 
+    # Load the message into a dictionary
     c = json.loads(message)
     seq = int(c.get('request_seq', -1))  # a negative seq will never occur
     cmd = c.get('command', '')
@@ -228,6 +243,7 @@ def on_receive_from_debugpy(message):
         # Should only be the initialization request
         log("Already processed, debugpy response is:", message)
     else:
+        # Send the message normally to the debugger
         log('Received from debugpy:', message)
         interface.send(message)
 
