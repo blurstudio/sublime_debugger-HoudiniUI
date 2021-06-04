@@ -2,11 +2,10 @@
 from Debugger.modules.typecheck import *
 import Debugger.modules.debugger.adapter as adapter
 
-from os.path import abspath, join, dirname
-from . import common
-import shutil
+from os.path import abspath, join, dirname, expanduser, exists
+from shutil import copy, which
 import socket
-import time
+import os
 
 from .util import debugpy_path, ATTACH_TEMPLATE, log as custom_log
 
@@ -26,9 +25,9 @@ class HoudiniUI(adapter.AdapterConfiguration):
 		python = configuration.get("pythonPath")
 
 		if not python:
-			if shutil.which("python3"):
+			if which("python3"):
 				python = "python3"
-			elif not (python := shutil.which("python")):
+			elif not (python := which("python")):
 				raise Exception('No python installation found')
 		
 		custom_log(f"Found python install: {python}")
@@ -61,8 +60,6 @@ class HoudiniUI(adapter.AdapterConfiguration):
 		custom_log(f"Connecting to {host}:{str(port)}")
 		
 		return adapter.SocketTransport(log, host, port)
-
-	async def install(self, log): ...
 
 	@property
 	def installed_version(self) -> Optional[str]:
@@ -97,3 +94,45 @@ class HoudiniUI(adapter.AdapterConfiguration):
 
 	async def configuration_resolve(self, configuration):
 		return configuration
+
+	async def install(self, log): 
+		package_path = abspath(join(dirname(__file__), '..'))
+		adapter_path = join(package_path, "adapter")
+
+		# Add debugpy injector to pythonrc file if not present
+		# TODO: Support various OS's, not just Windows
+		doc_path = join(expanduser("~"), "Documents")
+		p27l_path = None
+
+		# Find (or create) the python2.7libs directory
+		for name in os.listdir(doc_path):
+			if name.startswith('houdini'):
+				if 'houdini.env' in os.listdir(join(doc_path, name)):
+					p27l_path = join(doc_path, name, 'python2.7libs')
+					
+					if not exists(p27l_path):
+						os.mkdir(p27l_path)
+					
+					break
+		
+		if p27l_path:
+
+			src_srv = join(adapter_path, 'resources', 'ui_debug_server.py')
+
+			dst_srv = join(p27l_path, "ui_debug_server.py")
+			rc_file = join(p27l_path, "pythonrc.py")
+
+			if not exists(dst_srv):
+				copy(src_srv, dst_srv)
+
+			if not exists(rc_file):
+				with open(rc_file, 'w') as f:
+					f.write('import ui_debug_server')
+			else:
+				with open(rc_file, 'r+') as f:
+					contents = f.read()
+					if "import ui_debug_server" not in contents:
+						f.write("\nimport ui_debug_server")
+
+		else:
+			raise Exception("A Houdini folder could not be found in the Documents folder. Aborting install.")
