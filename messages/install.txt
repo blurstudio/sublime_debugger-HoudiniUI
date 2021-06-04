@@ -24,4 +24,4 @@ through Sublime. All that's left is to start the debugger and
 select the Houdini UI adapter, set the breakpoints you want
 in (your equivalent of) testfunctions.py, and press the button
 calling the function in question in Houdini, and debugging will 
-start in Sublime.
+start automatically in Sublime.
