@@ -12,11 +12,13 @@ from .util import debugpy_path, ATTACH_TEMPLATE, log as custom_log
 
 import sublime
 
+adapter_type = 'HoudiniUI'
+
 
 class HoudiniUI(adapter.AdapterConfiguration):
 
 	@property
-	def type(self): return 'HoudiniUI'
+	def type(self): return adapter_type
 
 	async def start(self, log, configuration):
 
@@ -77,7 +79,7 @@ class HoudiniUI(adapter.AdapterConfiguration):
 				"description": "Debug Custom UI Components/Functions in Houdini",
 				"body": {
 					"name": "Houdini: Custom UI Debugging",
-					"type": "HoudiniUI",
+					"type": adapter_type,
 					"request": "attach",  # can only be attach or launch
 					"pythonPath": "",
 					"debugpy":  # The host/port used to communicate with debugpy in Houdini

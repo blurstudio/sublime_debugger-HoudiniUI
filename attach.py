@@ -10,7 +10,6 @@ from shutil import copy
 import sublime
 import os
 
-from .adapter.common import adapter_path
 from .adapter.houdini_ui import HoudiniUI
 from Debugger.modules.debugger.adapter.adapters import Adapters
 
@@ -18,6 +17,8 @@ from Debugger.modules.debugger.adapter.adapters import Adapters
 if sublime.version() < '4000':
 	raise Exception('This version of the Houdini UI adapter requires Sublime Text 4. Use the st3 branch instead.')
 
+package_path = abspath(dirname(__file__))
+adapter_path = join(package_path, "adapter")
 
 # Add debugpy injector to pythonrc file if not present
 # TODO: Support various OS's, not just Windows
